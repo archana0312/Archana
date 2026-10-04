@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>C-UAS Decision Trainer</title>
+<style>
+:root{--bg:#0b1118;--panel:#121c27;--panel2:#182636;--line:#26384b;--txt:#e8eef5;--dim:#8da2b8;--amber:#ffbe00;--red:#ff4646;--green:#52d68a;--blue:#5aa0ff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select{font:inherit}
+.hidden{display:none!important}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:#0b1118f5;border-bottom:1px solid var(--line);padding:8px 12px;display:flex;align-items:center;gap:8px}
+header h1{font-size:13px;margin:0;flex:1;letter-spacing:.5px}
+header small{color:var(--dim)}
+main{max-width:900px;margin:0 auto;padding:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.btn{border:0;border-radius:10px;padding:12px 14px;font-weight:700;background:#233449;color:var(--txt);min-height:46px;cursor:pointer}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--blue);color:#06101c}.btn.go{background:var(--green);color:#052012}.btn.danger{background:#a4262c}
+.btn.sm{min-height:38px;padding:8px 10px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1 1 110px}
+input[type=text],input[type=password],select{width:100%;background:#0b141d;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:11px;margin:4px 0 10px}
+label{font-size:12px;color:var(--dim)}
+.login{max-width:380px;margin:8vh auto 0}
+.login h2{margin:0 0 4px}
+.err{color:var(--red);font-size:13px;min-height:18px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button{font-size:12px;padding:9px 2px!important;flex:1;background:var(--panel);color:var(--dim);border:1px solid var(--line);border-radius:8px;padding:9px;font-weight:700}
+.tabs button.on{background:var(--blue);color:#06101c;border-color:var(--blue)}
+.stage{position:relative;background:#000;border-radius:10px;overflow:hidden;border:1px solid var(--line);aspect-ratio:16/9}
+.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.stage .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim);text-align:center;padding:16px}
+.alert{background:var(--red);color:#fff;font-weight:800;text-align:center;padding:10px;border-radius:10px;margin-bottom:10px;animation:bl 1s infinite}
+@keyframes bl{50%{opacity:.6}}
+.ct{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)}
+.ct b{min-width:70px}.ct .btns{display:flex;gap:4px;flex-wrap:wrap}
+.pill{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:800;color:#111;background:var(--amber)}
+.pill.drone{background:var(--red);color:#fff}.pill.bird,.pill.false{background:#6c757d;color:#fff}.pill.aircraft{background:var(--blue)}
+.note{font-size:13px;color:var(--dim)}
+.log img{width:90px;border-radius:6px;border:1px solid var(--line)}
+.lg{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+textarea{width:100%;height:120px;background:#0b141d;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px ui-monospace,Menlo,monospace}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;font-size:12px}
+.steps div{background:var(--panel2);border-radius:8px;padding:6px}.steps b{color:var(--amber);display:block}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){}}
+table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--dim)}.ts{overflow-x:auto}.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}.gal canvas{width:100%;height:auto;border-radius:8px;border:1px solid var(--line)}.hist{display:flex;align-items:flex-end;gap:8px;height:90px;margin:14px 0 4px}.hist div{flex:1;background:var(--blue);border-radius:4px 4px 0 0;position:relative;min-height:2px}.hist span{position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:11px;color:var(--dim)}
+</style>
+</head>
+<body>
+
+<section id="auth" class="login card">
+  <h2>🛡️ C-UAS Trainer</h2>
+  <p class="note" id="authSub">Sign in to continue.</p>
+  <label>Callsign / username</label><input id="u" type="text" autocomplete="username" autocapitalize="none">
+  <label>Password</label><input id="p" type="password" autocomplete="current-password">
+  <div id="roleBox" class="hidden"><label>Role</label>
+    <select id="role"><option>Operator</option><option>Observer</option><option>Commander</option></select></div>
+  <div class="err" id="err"></div>
+  <button class="btn primary" style="width:100%" id="go">Sign in</button>
+  <p class="note" style="text-align:center"><a href="#" id="sw" style="color:var(--blue)">Create account</a></p>
+  <p class="note">Training login only: accounts are stored on this device, so it is not secure access control.</p>
+</section>
+
+<div id="app" class="hidden">
+  <header><h1>🛡️ C-UAS TRAINER</h1><small id="who"></small><button class="btn sm" id="out">Log out</button></header>
+  <main>
+    <div class="tabs"><button class="on" data-t="train">Train</button><button data-t="live">Live</button><button data-t="log">Log</button><button data-t="data">Dataset</button><button data-t="doc">Doctrine</button></div>
+
+    <div id="t-train">
+      <div class="card">
+        <b>Contact decision drill</b>
+        <p class="note">Unknown contacts enter your sector as dots. Tap one, zoom in to resolve its shape and markings, and cross-check the sensor data. Shape separates drone from bird or aircraft. Beacon, markings and flight pattern separate friendly from hostile. Waiting improves the picture but shrinks your time to act.</p>
+        <div class="row"><select id="lv" style="margin:0"><option value="1">Scenario 1 · Day, clear EO</option><option value="2">Scenario 2 · Dusk, mixed traffic</option><option value="3">Scenario 3 · Night IR, degraded sensors</option></select><button class="btn primary" id="tgo">Begin</button></div>
+        <div class="steps" style="grid-template-columns:repeat(3,1fr);margin:10px 0"><div><b id="hScore">0</b>Score</div><div><b id="hStreak">0</b>Streak</div><div><b id="hLeft">-</b>Contacts left</div></div>
+        <div class="stage" id="simStage" style="border-width:3px"><canvas id="sim" width="1600" height="900"></canvas></div>
+        <div id="fb" class="note" style="min-height:42px;margin-top:8px">Standing by.</div>
+        <div id="panel"></div><div id="deb"></div>
+      </div>
+    </div>
+    <div id="t-live" class="hidden">
+      <div id="alertBox"></div>
+      <div class="card">
+        <div class="stage"><video id="vid" playsinline muted></video><canvas id="ov"></canvas>
+          <div class="ph" id="ph">Camera off. Tap Start camera and point at the sky.</div></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn go" id="start">Start camera</button>
+          <button class="btn" id="flip" disabled>Flip</button>
+          <button class="btn" id="snap" disabled>Snapshot</button>
+        </div>
+        <label style="margin-top:10px">Sensitivity: <span id="sv">5</span></label>
+        <input type="range" id="sens" min="1" max="10" value="5" style="width:100%">
+        <p class="note">Detection flags small moving objects. It cannot tell a drone from a bird. You make the call: tap a label on each contact.</p>
+      </div>
+      <div class="card"><b>Contacts</b><div id="contacts" class="note">None yet.</div></div>
+    </div>
+
+    <div id="t-log" class="hidden">
+      <div class="card"><div class="row"><button class="btn" id="csv">Show CSV</button><button class="btn danger" id="clr">Clear log</button></div>
+        <textarea id="csvOut" class="hidden" readonly></textarea></div>
+      <div class="card log" id="logList"></div>
+    </div>
+
+    <div id="t-data" class="hidden">
+      <div class="card"><b>Annotated dataset</b>
+        <p class="note">Load your frames (.jpg/.png) together with their YOLO label files (.txt, same names). Lines are: class cx cy w h, all normalised.</p>
+        <input type="file" id="dfiles" multiple accept="image/*,.txt" style="width:100%;margin:6px 0">
+        <label>Class names (comma separated, in class-number order)</label>
+        <input type="text" id="cnames" value="Class 0, Class 1">
+        <div id="dstats" class="note"></div><div class="hist" id="dhist"></div>
+      </div>
+      <div class="card"><div class="gal" id="dgal"></div></div>
+      <div class="card ts"><table id="dtab"><thead><tr><th>Frame</th><th>Resolution</th><th>Boxes</th><th>Per class</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <div id="t-doc" class="hidden">
+      <div class="card"><b>Decision doctrine</b>
+        <div class="steps" style="margin:10px 0"><div><b>1</b>Detect</div><div><b>2</b>Classify</div><div><b>3</b>Track</div><div><b>4</b>Report</div></div>
+        <p class="note">Generic spotting guidance. Replace with your unit's SOP and rules of engagement, which always take precedence.</p>
+      </div>
+      <div class="card"><b>How identification works</b>
+        <ul style="padding-left:18px;margin:6px 0">
+          <li><b>Drone or not:</b> shape under zoom. Rotors or a straight wing with a prop mean drone. Flapping wings, head and beak mean bird. Large fuselage with nav lights means manned aircraft.</li>
+          <li><b>Friendly or hostile:</b> shape cannot tell you. Use the beacon or IFF reply, registered link, blue marking and strobe, and a flight pattern that matches known friendly activity.</li>
+          <li>Quad or fixed-wing can be either side, so never decide on shape alone.</li>
+          <li>No beacon, no markings and a straight run at the asset: treat as hostile and escalate. Never escalate on a poor image alone.</li>
+          <li>Wait for a better picture only while time to the zone allows.</li>
+        </ul></div>
+      <div class="card"><b>Classification cues</b>
+        <div class="ts"><table><thead><tr><th>Cue</th><th>Likely drone</th><th>Likely bird</th></tr></thead><tbody>
+          <tr><td>Motion</td><td>Straight, steady, or hovers</td><td>Erratic, soaring, flaps</td></tr>
+          <tr><td>Sound</td><td>Constant whine or buzz</td><td>Mostly silent</td></tr>
+          <tr><td>Shape</td><td>Symmetric, rotors, lights</td><td>Wings change shape</td></tr>
+          <tr><td>Behaviour</td><td>Holds over a point, follows a line</td><td>Flocks, lands on perches</td></tr>
+        </tbody></table></div>
+      </div>
+      <div class="card"><b>Decision checklist</b>
+        <ul style="padding-left:18px;margin:6px 0">
+          <li>Watch the contact for several seconds before labelling.</li>
+          <li>Never label from one frame; use the track trail.</li>
+          <li>When unsure, report as unclassified rather than guess.</li>
+          <li>Confirming a drone raises an alert and saves a snapshot.</li>
+        </ul>
+      </div>
+      <div class="card"><b>Contact report (SALUTE)</b>
+        <div class="row"><button class="btn sm" id="salGen">Build from log</button></div>
+        <textarea id="salOut" style="margin-top:8px" placeholder="Size / Activity / Location / Unit / Time / Equipment"></textarea>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let session=null,reg=false;
+async function hash(s){try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("cuas:"+s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}catch(e){return btoa(s)}}
+
+// ---------- auth ----------
+$("sw").onclick=e=>{e.preventDefault();reg=!reg;$("go").textContent=reg?"Create account":"Sign in";$("sw").textContent=reg?"Back to sign in":"Create account";$("roleBox").classList.toggle("hidden",!reg);$("err").textContent=""};
+$("go").onclick=async()=>{
+  const u=$("u").value.trim().toLowerCase(),p=$("p").value,users=store.get("cuas_users",{});
+  if(!u||p.length<4){$("err").textContent="Enter a username and a password of 4+ characters.";return}
+  const h=await hash(p);
+  if(reg){
+    if(users[u]){$("err").textContent="Username already taken.";return}
+    users[u]={h,role:$("role").value};store.set("cuas_users",users);
+  }else if(!users[u]||users[u].h!==h){$("err").textContent="Wrong username or password.";return}
+  session={name:u,role:users[u].role};try{sessionStorage.setItem("cuas_sess",JSON.stringify(session))}catch(e){}
+  enter();
+};
+$("p").addEventListener("keydown",e=>{if(e.key==="Enter")$("go").click()});
+$("out").onclick=()=>{stop();try{sessionStorage.removeItem("cuas_sess")}catch(e){}session=null;$("app").classList.add("hidden");$("auth").classList.remove("hidden");$("p").value=""};
+function enter(){$("auth").classList.add("hidden");$("app").classList.remove("hidden");$("who").textContent=session.name+" · "+session.role;$("err").textContent="";renderLog()}
+try{const s=sessionStorage.getItem("cuas_sess");if(s){session=JSON.parse(s);enter()}}catch(e){}
+if(Object.keys(store.get("cuas_users",{})).length===0){$("sw").click();$("authSub").textContent="First run: create the first account."}
+
+// ---------- tabs ----------
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  ["train","live","log","data","doc"].forEach(t=>$("t-"+t).classList.toggle("hidden",t!==b.dataset.t));
+  if(b.dataset.t==="log")renderLog();
+});
+
+// ---------- camera + detection ----------
+const vid=$("vid"),ov=$("ov"),octx=ov.getContext("2d");
+const GW=160,GH=90,work=document.createElement("canvas");work.width=GW;work.height=GH;
+const wctx=work.getContext("2d",{willReadFrequently:true});
+let stream=null,facing="environment",prev=null,tracks=[],nextId=1,running=false,lastT=0,lastKey="",alertUntil=0;
+$("sens").oninput=e=>$("sv").textContent=e.target.value;
+
+async function startCam(){
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error("Camera API unavailable");
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720}},audio:false});
+    vid.srcObject=stream;await vid.play();
+    $("ph").classList.add("hidden");$("start").textContent="Stop camera";$("start").classList.replace("go","danger");
+    $("flip").disabled=$("snap").disabled=false;prev=null;tracks=[];running=true;requestAnimationFrame(loop);
+  }catch(e){
+    $("ph").classList.remove("hidden");
+    $("ph").textContent="Camera unavailable ("+(e.name||e.message)+"). Allow camera access in your browser, or open this page directly in a browser tab.";
+  }
+}
+function stop(){
+  running=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  vid.srcObject=null;$("start").textContent="Start camera";$("start").classList.replace("danger","go");
+  $("flip").disabled=$("snap").disabled=true;$("ph").classList.remove("hidden");$("ph").textContent="Camera off. Tap Start camera and point at the sky.";
+  octx.clearRect(0,0,ov.width,ov.height);tracks=[];renderContacts(true);
+}
+$("start").onclick=()=>stream?stop():startCam();
+$("flip").onclick=()=>{facing=facing==="environment"?"user":"environment";if(stream){stop();startCam()}};
+
+function blobs(mask){
+  const out=[],seen=new Uint8Array(GW*GH);
+  for(let i=0;i<mask.length;i++){
+    if(!mask[i]||seen[i])continue;
+    let st=[i],n=0,x0=GW,y0=GH,x1=0,y1=0;seen[i]=1;
+    while(st.length){
+      const c=st.pop(),x=c%GW,y=(c/GW)|0;n++;
+      if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=GW||ny>=GH)continue;
+        const k=ny*GW+nx;if(mask[k]&&!seen[k]){seen[k]=1;st.push(k)}
+      }
+    }
+    out.push({n,x:(x0+x1)/2,y:(y0+y1)/2,w:x1-x0+1,h:y1-y0+1});
+  }
+  return out;
+}
+function loop(t){
+  if(!running)return;requestAnimationFrame(loop);
+  if(t-lastT<90||vid.readyState<2)return;lastT=t;
+  wctx.drawImage(vid,0,0,GW,GH);
+  const d=wctx.getImageData(0,0,GW,GH).data,g=new Uint8Array(GW*GH);
+  for(let i=0;i<g.length;i++)g[i]=(d[i*4]*77+d[i*4+1]*150+d[i*4+2]*29)>>8;
+  if(!prev){prev=g;return}
+  const sens=+$("sens").value,thr=44-sens*3,mask=new Uint8Array(GW*GH);let ch=0;
+  for(let i=0;i<g.length;i++){if(Math.abs(g[i]-prev[i])>thr){mask[i]=1;ch++}}
+  prev=g;
+  let found=[];
+  if(ch/g.length<0.2)found=blobs(mask).filter(b=>b.n>=2&&b.n<GW*GH*0.04);   // >20% changed = camera moving, ignore
+  match(found);draw();renderContacts(false);
+}
+function match(found){
+  tracks.forEach(k=>k.hit=false);
+  for(const b of found){
+    let best=null,bd=14;
+    for(const k of tracks){if(k.hit)continue;const dd=Math.hypot(k.x-b.x,k.y-b.y);if(dd<bd){bd=dd;best=k}}
+    if(best){best.vx=b.x-best.x;best.vy=b.y-best.y;Object.assign(best,{x:b.x,y:b.y,w:b.w,h:b.h});best.hits++;best.miss=0;best.hit=true;best.path.push([b.x,b.y]);if(best.path.length>20)best.path.shift()}
+    else tracks.push({id:nextId++,x:b.x,y:b.y,w:b.w,h:b.h,vx:0,vy:0,hits:1,miss:0,hit:true,label:null,path:[[b.x,b.y]],noted:false});
+  }
+  tracks.forEach(k=>{if(!k.hit)k.miss++});
+  tracks=tracks.filter(k=>k.miss<10||k.label);
+  tracks=tracks.filter(k=>k.miss<40);
+  for(const k of tracks)if(k.hits>=6&&!k.noted){k.noted=true;beep(520,.12);try{navigator.vibrate&&navigator.vibrate(80)}catch(e){}}
+}
+const live=()=>tracks.filter(k=>k.hits>=6);
+function draw(){
+  const r=vid.getBoundingClientRect();
+  if(ov.width!==ov.clientWidth*2){ov.width=ov.clientWidth*2;ov.height=ov.clientHeight*2}
+  octx.clearRect(0,0,ov.width,ov.height);
+  // map grid coords through object-fit:cover
+  const vw=vid.videoWidth||16,vh=vid.videoHeight||9,cw=ov.width,ch=ov.height;
+  const s=Math.max(cw/vw,ch/vh),ox=(cw-vw*s)/2,oy=(ch-vh*s)/2,gx=vw*s/GW,gy=vh*s/GH;
+  octx.lineWidth=3;octx.font="bold 22px system-ui";
+  for(const k of live()){
+    const col=k.label==="drone"?"#ff4646":k.label?"#8da2b8":"#ffbe00";
+    const w=Math.max(k.w*gx+16,40),h=Math.max(k.h*gy+16,40),x=ox+k.x*gx-w/2,y=oy+k.y*gy-h/2;
+    octx.strokeStyle=col;octx.strokeRect(x,y,w,h);octx.fillStyle=col;
+    octx.fillText("#"+k.id+(k.label?" "+k.label.toUpperCase():""),x,y-6);
+    octx.beginPath();k.path.forEach((p,i)=>{const px=ox+p[0]*gx,py=oy+p[1]*gy;i?octx.lineTo(px,py):octx.moveTo(px,py)});octx.stroke();
+  }
+}
+function renderContacts(force){
+  const L=live().filter(k=>k.miss<10||k.label),key=L.map(k=>k.id+":"+k.label).join(",");
+  const box=$("alertBox");
+  box.innerHTML=Date.now()<alertUntil?'<div class="alert">⚠ DRONE CONFIRMED: REPORT NOW</div>':"";
+  if(!force&&key===lastKey)return;lastKey=key;
+  const c=$("contacts");
+  if(!L.length){c.textContent="None yet.";return}
+  c.innerHTML="";
+  for(const k of L){
+    const sp=Math.hypot(k.vx,k.vy).toFixed(1),d=document.createElement("div");d.className="ct";
+    d.innerHTML='<b>Contact #'+k.id+'</b><span class="pill '+(k.label||"")+'">'+(k.label?k.label.toUpperCase():"UNCLASSIFIED")+'</span><span class="note">speed '+sp+'</span><div class="btns"></div>';
+    for(const l of ["drone","bird","aircraft","false"]){
+      const b=document.createElement("button");b.className="btn sm"+(l==="drone"?" danger":"");b.textContent=l==="false"?"False alarm":l[0].toUpperCase()+l.slice(1);
+      b.onclick=()=>classify(k,l);d.querySelector(".btns").appendChild(b);
+    }
+    c.appendChild(d);
+  }
+}
+function snapshot(){
+  const c=document.createElement("canvas");c.width=320;c.height=Math.round(320*(vid.videoHeight||9)/(vid.videoWidth||16));
+  c.getContext("2d").drawImage(vid,0,0,c.width,c.height);return c.toDataURL("image/jpeg",.55);
+}
+function classify(k,l){
+  k.label=l;
+  addLog({id:k.id,label:l,snap:snapshot()});
+  if(l==="drone"){alertUntil=Date.now()+8000;beep(880,.3);setTimeout(()=>beep(880,.3),400);try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}
+  lastKey="";renderContacts(true);
+}
+$("snap").onclick=()=>{addLog({id:"-",label:"snapshot",snap:snapshot()});beep(660,.08)};
+
+// ---------- log ----------
+function addLog(e){
+  const log=store.get("cuas_log",[]);
+  log.unshift({t:new Date().toLocaleString(),user:session?session.name:"?",...e});
+  while(log.length>25)log.pop();
+  store.set("cuas_log",log);
+}
+function renderLog(){
+  const log=store.get("cuas_log",[]),el=$("logList");
+  el.innerHTML=log.length?"":'<span class="note">No entries.</span>';
+  for(const e of log){
+    const d=document.createElement("div");d.className="lg";
+    d.innerHTML=(e.snap?'<img src="'+e.snap+'" alt="">':"")+'<div><span class="pill '+e.label+'">'+e.label.toUpperCase()+'</span> contact '+e.id+'<br><span class="note">'+e.t+' · '+e.user+'</span></div>';
+    el.appendChild(d);
+  }
+}
+$("csv").onclick=()=>{
+  const rows=[["time","user","contact","label"],...store.get("cuas_log",[]).map(e=>[e.t,e.user,e.id,e.label])];
+  const o=$("csvOut");o.value=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");o.classList.remove("hidden");o.select();
+};
+$("clr").onclick=()=>{if(session&&session.role==="Observer")return;store.set("cuas_log",[]);renderLog();$("csvOut").classList.add("hidden")};
+
+// ---------- audio ----------
+let ac=null;
+function beep(f,d){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;g.gain.value=.15;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
+
+// ---------- dataset ----------
+const SEED=[{name:"1.jpg",W:3840,H:2160,boxes:[[0,.516536,.767824,.027344,.043056],[1,.475779,.147541,.05075,.069672],[0,.487313,.197746,.034602,.026639]],url:null}];
+let frames=SEED.slice();
+const cn=i=>{const n=$("cnames").value.split(",").map(x=>x.trim());return n[i]||("Class "+i)};
+function renderData(){
+  const tb=document.querySelector("#dtab tbody"),gal=$("dgal"),cnt={};tb.innerHTML="";gal.innerHTML="";
+  frames.forEach(f=>{
+    const pc={};f.boxes.forEach(b=>{pc[b[0]]=(pc[b[0]]||0)+1;cnt[b[0]]=(cnt[b[0]]||0)+1});
+    const tr=document.createElement("tr");
+    tr.innerHTML="<td>"+f.name+"</td><td>"+f.W+"x"+f.H+"</td><td>"+f.boxes.length+"</td><td>"+Object.keys(pc).map(k=>cn(+k)+": "+pc[k]).join(", ")+"</td>";tb.appendChild(tr);
+    if(f.url){const c=document.createElement("canvas");gal.appendChild(c);const im=new Image();im.onload=()=>{c.width=480;c.height=Math.round(480*im.height/im.width);const x=c.getContext("2d");x.drawImage(im,0,0,c.width,c.height);x.lineWidth=2;x.font="12px system-ui";
+      f.boxes.forEach(b=>{x.strokeStyle=b[0]===0?"#ffbe00":"#00e6c8";x.fillStyle=x.strokeStyle;const w=b[3]*c.width,h=b[4]*c.height;x.strokeRect(b[1]*c.width-w/2,b[2]*c.height-h/2,w,h);x.fillText(cn(b[0]),b[1]*c.width-w/2,b[2]*c.height-h/2-3)})};im.src=f.url}
+  });
+  const tot=frames.reduce((a,f)=>a+f.boxes.length,0),mx=Math.max(1,...Object.values(cnt));
+  $("dstats").textContent=frames.length+" frame(s), "+tot+" boxes"+(frames.some(f=>f.url)?"":". Showing metadata for 1.jpg; load images to see them.");
+  $("dhist").innerHTML=Object.keys(cnt).map(k=>'<div style="height:'+Math.round(cnt[k]/mx*100)+'%"><span>'+cn(+k)+" "+cnt[k]+"</span></div>").join("");
+}
+$("cnames").oninput=renderData;
+$("dfiles").onchange=async e=>{
+  const fl=[...e.target.files],imgs={},txt={};
+  for(const f of fl){const base=f.name.replace(/\.[^.]+$/,"");if(/\.txt$/i.test(f.name))txt[base]=await f.text();else imgs[base]=f}
+  const out=[];
+  for(const k of Object.keys(imgs)){
+    const url=URL.createObjectURL(imgs[k]);
+    const dim=await new Promise(r=>{const i=new Image();i.onload=()=>r([i.naturalWidth,i.naturalHeight]);i.onerror=()=>r([0,0]);i.src=url});
+    const boxes=(txt[k]||"").split(/\r?\n/).map(l=>l.trim().split(/\s+/).map(Number)).filter(a=>a.length>=5&&a.every(n=>!isNaN(n))).map(a=>a.slice(0,5));
+    out.push({name:imgs[k].name,W:dim[0],H:dim[1],boxes,url});
+  }
+  if(out.length){frames=out.sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));renderData()}
+};
+renderData();
+
+// ---------- doctrine: SALUTE ----------
+$("salGen").onclick=()=>{
+  const l=store.get("cuas_log",[]).filter(e=>e.label==="drone"),last=l[0];
+  $("salOut").value=last?
+   "S - Size: "+l.length+" confirmed drone contact(s)\nA - Activity: (describe track/behaviour)\nL - Location: (grid / bearing / range)\nU - Unit: (unknown / markings)\nT - Time: "+last.t+"\nE - Equipment: (type, payload if seen)\nReported by: "+last.user:
+   "No confirmed drone contacts in the log yet.";
+};
+
+// ---------- contact decision drill ----------
+const sim=$("sim"),sx=sim.getContext("2d");
+const LV={1:{n:6,max:2,nz:.12,miss:0,night:0},2:{n:9,max:3,nz:.25,miss:.15,night:0},3:{n:12,max:4,nz:.45,miss:.35,night:1}};
+const TYPES={hostile:"Hostile UAS",friendly:"Friendly UAS",bird:"Bird",aircraft:"Manned a/c"};
+const WHY={hostile:"Hostile UAS: closing on the asset, unregistered link, no beacon reply, no friendly markings, possible unknown payload.",friendly:"Friendly UAS: beacon active, registered link, blue marking and strobe, holds a pattern then departs.",bird:"Bird: flapping wings, head and beak, erratic, no RF, no rotor sound.",aircraft:"Manned aircraft: transponder squawk, high altitude, fast crossing track."};
+let M=null,sel=null,simT=0;
+function mk(){
+  const r=Math.random(),type=r<.35?"hostile":r<.55?"friendly":r<(M.lv===3?.82:.78)?"bird":"aircraft",dir=Math.random()<.5?1:-1,L=LV[M.lv];
+  const o={id:++M.uid,type,dir,shape:(type==='hostile'||type==='friendly')?(Math.random()<.65?'quad':'wing'):type,born:performance.now(),done:false,cls:null,t:0,ph:Math.random()*6,y:110+Math.random()*130,hold:0,miss:{}};
+  const R=(a,b)=>a+Math.random()*(b-a);
+  if(type==="hostile"){Object.assign(o,{x:R(150,650),range:R(1500,1900),rv:R(60,90),lx:R(5,14),alt:Math.round(R(60,260))})}
+  else if(type==="friendly"){Object.assign(o,{x:R(150,650),range:R(1400,1700),rv:R(55,80),lx:R(4,10),alt:Math.round(R(80,250))})}
+  else if(type==="bird"){Object.assign(o,{x:dir>0?-10:810,range:R(120,450),rv:R(-12,12),lx:R(30,60),alt:Math.round(R(10,120))})}
+  else{Object.assign(o,{x:dir>0?-10:810,range:R(3500,5500),rv:0,lx:R(70,110),alt:Math.round(R(2500,8000))})}
+  for(const f of ["rf","aco","ifd","alt"])if(Math.random()<L.miss)o.miss[f]=1;
+  return o;
+}
+function flash(msg,ok){$("fb").textContent=msg;$("fb").style.color=ok?"var(--green)":"var(--red)";const st=$("simStage");st.style.borderColor=ok?"var(--green)":"var(--red)";setTimeout(()=>st.style.borderColor="var(--line)",450);try{navigator.vibrate&&navigator.vibrate(ok?30:[80,40,80])}catch(e){}}
+$("tgo").onclick=()=>{M={lv:+$("lv").value,uid:0,obj:[],spawned:0,spawnT:.5,score:0,streak:0,ok:0,bad:0,breach:0,fr:0,rt:[],end:false,zm:2};sel=null;$("deb").innerHTML="";$("panel").innerHTML="";$("fb").style.color="var(--dim)";$("fb").textContent="Sector active. Tap a contact to inspect it.";beep(500,.08)};
+const NA='<span style="color:var(--dim)">NO DATA</span>';
+function readout(o){
+  const f=(k,v)=>o.miss[k]?NA:v,az=(47+(o.x/800-.5)*60+360)%360,el=5+(225-o.y)/225*10;
+  const cl=o.rv>8?"Closing "+Math.round(o.rv/3)+" m/s":o.rv<-8?"Opening "+Math.round(-o.rv/3)+" m/s":o.lx>40?"Crossing":"Holding";
+  const spd=Math.round(Math.hypot(o.rv/3,o.lx*(o.type==="aircraft"?1.6:.3)));
+  const rf={hostile:"C2 link 2.4 GHz, unregistered",friendly:"C2 link, registered",bird:"None",aircraft:"None"}[o.type];
+  const ac={hostile:"Rotor signature",friendly:"Rotor signature",bird:"None",aircraft:"Turbine"}[o.type];
+  const id={hostile:"No beacon reply",friendly:"Blue-force beacon ACTIVE",bird:"N/A",aircraft:"ADS-B squawk 2471"}[o.type];
+  let tz="";if(o.rv>8){const t=Math.max(0,(o.range-500)/o.rv);tz='<tr><td>To zone</td><td style="color:'+(t<6?"var(--red)":"var(--amber)")+'">'+t.toFixed(0)+' s</td></tr>'}
+  return "<table><tr><td>Range</td><td>"+Math.round(o.range)+" m</td></tr><tr><td>Brg / Elev</td><td>"+String(Math.round(az)).padStart(3,"0")+"° / "+(el>=0?"+":"")+el.toFixed(0)+"°</td></tr><tr><td>Track</td><td>"+cl+"</td></tr>"+tz+"<tr><td>Speed</td><td>"+spd+" m/s</td></tr><tr><td>Altitude</td><td>"+f("alt","~"+o.alt+" m")+"</td></tr><tr><td>RF</td><td>"+f("rf",rf)+"</td></tr><tr><td>Acoustic</td><td>"+f("aco",ac)+"</td></tr><tr><td>Beacon/IFF</td><td>"+f("ifd",id)+"</td></tr></table>";
+}
+function showPanel(){
+  zqLast="";const o=sel,p=$("panel");if(!o){p.innerHTML="";return}
+  p.innerHTML='<div class="card" style="margin:10px 0 0"><b>TRACK T'+String(o.id).padStart(2,"0")+'</b><canvas id="zoom" width="320" height="180" style="width:100%;border-radius:8px;border:1px solid var(--line);margin-top:6px"></canvas><div class="note" id="zq"></div><div class="row" id="zbar" style="margin:6px 0"></div><div class="ts" id="rd">'+readout(o)+'</div><div id="stp" style="margin-top:8px"></div></div>';
+  for(const m of [1,2,4])$("zbar").appendChild(btn("Zoom ×"+m,"sm"+(M.zm===m?" primary":""),()=>{M.zm=m;showPanel()}));
+  steps();
+}
+function btn(t,cls,fn){const b=document.createElement("button");b.className="btn"+(cls?" "+cls:"");b.textContent=t;b.onclick=fn;return b}
+function steps(){
+  const o=sel,st=$("stp");if(!o||!st)return;st.innerHTML="";const row=document.createElement("div");row.className="row";
+  const h=document.createElement("div");h.className="note";h.style.margin="0 0 6px";
+  if(!o.cls){h.textContent="1. Identify";st.appendChild(h);for(const c of Object.keys(TYPES))row.appendChild(btn(TYPES[c],c==="hostile"?"danger":"",()=>{o.cls=c;beep(560,.05);steps()}))}
+  else{h.textContent="2. Action (identified as "+TYPES[o.cls]+")";st.appendChild(h);
+    row.appendChild(btn("Track & report","",()=>judge("track")));row.appendChild(btn("Escalate to authority","danger",()=>judge("escalate")));row.appendChild(btn("Dismiss / log","",()=>judge("dismiss")));row.appendChild(btn("Re-identify","sm",()=>{o.cls=null;steps()}))}
+  st.appendChild(row);
+}
+function judge(act){
+  const o=sel;if(!o||!M)return;o.done=true;
+  const rt=(performance.now()-o.born)/1000,ok1=o.cls===o.type,need=o.type==="hostile"?"escalate":"dismiss";
+  const bonus=Math.round(o.type==="hostile"?Math.max(0,(o.range-200)/1300*60):Math.max(0,60-rt*3));
+  let pts=ok1?60:-40,note="";M.rt.push(rt);
+  if(act===need)pts+=60+bonus;
+  else if(o.type==="hostile"&&act==="track"&&o.range>800)pts+=30;
+  else if(act==="escalate"&&o.type==="friendly"){pts-=150;M.fr++;note=" Escalating a friendly risks fratricide."}
+  else{pts-=50;if(o.type==="hostile"&&act==="dismiss")pts-=50}
+  M.score+=pts;const good=ok1&&(act===need||(o.type==="hostile"&&act==="track"&&o.range>800));
+  if(good){M.ok++;M.streak++;M.score+=5*Math.min(M.streak,5)}else{M.bad++;M.streak=0}
+  flash((ok1?"Identification correct. ":"Misidentified: it was "+TYPES[o.type]+". ")+WHY[o.type]+note+" ("+(pts>=0?"+":"")+pts+")",good);
+  beep(good?740:200,good?.1:.25);sel=null;showPanel();
+}
+sim.addEventListener("pointerdown",e=>{
+  if(!M||M.end)return;const r=sim.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*800,y=(e.clientY-r.top)/r.height*450;
+  let best=null,bd=50;for(const o of M.obj){if(o.done)continue;const d=Math.hypot(o.x-x,o.y-y);if(d<bd){bd=d;best=o}}
+  sel=best;showPanel();if(best)beep(600,.04);
+});
+function step(dt){
+  const L=LV[M.lv];M.spawnT-=dt;
+  if(M.spawnT<=0&&M.spawned<L.n&&M.obj.filter(o=>!o.done).length<L.max){M.obj.push(mk());M.spawned++;M.spawnT=3+Math.random()*4}
+  for(const o of M.obj){
+    if(o.done)continue;o.t+=dt;
+    if(o.type==="friendly"){if(o.hold<9&&o.range<=700){o.hold+=dt;o.rv=0}else if(o.hold>=9)o.rv=-50}
+    o.range-=o.rv*dt;o.x+=(o.type==="bird"||o.type==="aircraft"?o.dir:1)*o.lx*dt*(o.type==="bird"||o.type==="aircraft"?1:Math.sin(o.ph));
+    o.sy=o.y+(o.type==="bird"?Math.sin(o.t*3+o.ph)*14:Math.sin(o.t*.8+o.ph)*3);
+    let gone=o.x<-30||o.x>830||(o.type==="friendly"&&o.range>2200)||o.range<5;
+    if(o.type==="hostile"&&o.range<=200){o.done=true;M.breach++;M.streak=0;M.score-=200;flash("BREACH: hostile UAS reached the asset. -200",0);beep(160,.5);if(sel===o){sel=null;showPanel()}}
+    else if(gone){o.done=true;if(sel===o){sel=null;showPanel()}}
+  }
+  if(M.spawned>=L.n&&M.obj.every(o=>o.done)){M.end=true;finish()}
+}
+function finish(){
+  const tot=M.ok+M.bad+M.breach,acc=tot?Math.round(M.ok/tot*100):0,avg=M.rt.length?(M.rt.reduce((a,b)=>a+b,0)/M.rt.length).toFixed(1):"-";
+  const rank=acc>=90&&M.breach===0&&M.fr===0?"Expert":acc>=70&&M.fr===0?"Qualified":"Needs retraining";
+  const best=Math.max(store.get("cuas_best",-9999),M.score);store.set("cuas_best",best);
+  $("deb").innerHTML='<div class="card" style="margin:10px 0 0"><b>After-action review: '+rank+'</b><div class="steps" style="margin:10px 0"><div><b>'+M.score+'</b>Score</div><div><b>'+acc+'%</b>Correct</div><div><b>'+avg+'s</b>Avg decision</div><div><b>'+M.breach+'/'+M.fr+'</b>Breach / Fratricide risk</div></div><p class="note">Best on this device: '+best+'.</p><button class="btn primary" style="width:100%" onclick="$(\'tgo\').click()">Run again</button></div>';
+  if(session)addLog({id:"S"+M.lv,label:"drill "+M.score+" pts",snap:null});
+  $("fb").textContent="Scenario complete.";beep(880,.2);
+}
+function clarity(o){const L=LV[M.lv];return Math.max(0,Math.min(1,M.zm*700/Math.max(o.range,150)-L.nz*.5))}
+let zqLast="";
+function zdraw(o,t){
+  const z=$("zoom");if(!z)return;const x=z.getContext("2d"),L=LV[M.lv],c=clarity(o),night=L.night,k=.7+c*.8,d=c>.55,tt=t/1000;
+  x.setTransform(1,0,0,1,0,0);x.fillStyle=night?"#0d1116":"#9aa2ab";x.fillRect(0,0,320,180);
+  x.save();if("filter" in x)x.filter="blur("+((1-c)*3.5).toFixed(1)+"px)";
+  x.translate(160,90+Math.sin(tt*2+o.ph)*3);x.scale((o.dir<0?-1:1)*k*1.5,k*1.5);
+  const fg=night?"#e8eef2":"#14181d";x.fillStyle=x.strokeStyle=fg;x.lineWidth=2;
+  const blink=Math.floor(tt*3)%2===0,mark=()=>{if(!d)return;x.fillStyle="#5aa0ff";x.fillRect(-9,-1,18,2);if(blink){x.beginPath();x.arc(0,-9,2.6,0,7);x.fill()}x.fillStyle=fg};
+  if(c<.2){x.beginPath();x.arc(0,0,5,0,7);x.fill()}
+  else if(o.shape==="quad"){
+    x.fillRect(-9,-4,18,8);x.beginPath();x.moveTo(-9,-4);x.lineTo(-26,-8);x.moveTo(9,-4);x.lineTo(26,-8);x.moveTo(-9,4);x.lineTo(-26,8);x.moveTo(9,4);x.lineTo(26,8);x.stroke();
+    const w=13+Math.sin(tt*50)*4;for(const p of [[-26,-8],[26,-8],[-26,8],[26,8]]){x.globalAlpha=.55;x.beginPath();x.ellipse(p[0],p[1],w,2.5,0,0,7);x.fill();x.globalAlpha=1}
+    if(c>.4){x.beginPath();x.arc(0,7,3.5,0,7);x.fill()}
+    if(d&&o.type==="hostile")x.fillRect(-6,9,12,8);
+    if(o.type==="friendly")mark();
+  }else if(o.shape==="wing"){
+    x.beginPath();x.ellipse(0,0,24,3.5,0,0,7);x.fill();x.beginPath();x.moveTo(-3,-3);x.lineTo(-9,-30);x.lineTo(-3,-30);x.lineTo(5,-3);x.moveTo(-3,3);x.lineTo(-9,30);x.lineTo(-3,30);x.lineTo(5,3);x.fill();
+    x.beginPath();x.moveTo(-22,0);x.lineTo(-30,-9);x.lineTo(-27,0);x.lineTo(-30,9);x.fill();
+    x.beginPath();x.moveTo(26,-Math.sin(tt*60)*7);x.lineTo(26,Math.sin(tt*60)*7);x.stroke();
+    if(d&&o.type==="hostile")x.fillRect(-4,6,10,5);
+    if(o.type==="friendly")mark();
+  }else if(o.shape==="bird"){
+    const f=Math.sin(tt*12)*.9;x.beginPath();x.ellipse(0,0,15,6,0,0,7);x.fill();x.beginPath();x.arc(14,-3,4.5,0,7);x.fill();
+    x.beginPath();x.moveTo(18,-4);x.lineTo(25,-2);x.lineTo(18,-1);x.fill();x.beginPath();x.moveTo(-14,0);x.lineTo(-27,-6);x.lineTo(-27,6);x.fill();
+    for(const sg of [-1,1]){x.beginPath();x.moveTo(-2,sg*2);x.quadraticCurveTo(-8,sg*28*Math.cos(f),-18,sg*34*Math.cos(f));x.quadraticCurveTo(-4,sg*14,6,sg*2);x.fill()}
+  }else{
+    x.beginPath();x.ellipse(0,0,36,4.5,0,0,7);x.fill();x.beginPath();x.moveTo(2,-4);x.lineTo(-18,-40);x.lineTo(-8,-40);x.lineTo(14,-4);x.moveTo(2,4);x.lineTo(-18,40);x.lineTo(-8,40);x.lineTo(14,4);x.fill();
+    x.beginPath();x.moveTo(-30,-3);x.lineTo(-38,-14);x.lineTo(-33,-3);x.fill();
+    if(d){x.fillStyle="#ff4646";x.beginPath();x.arc(-18,-40,2.5,0,7);x.fill();x.fillStyle="#52d68a";x.beginPath();x.arc(-18,40,2.5,0,7);x.fill();if(blink){x.fillStyle="#fff";x.beginPath();x.arc(-36,0,2.5,0,7);x.fill()}}
+  }
+  x.restore();
+  x.fillStyle="rgba(0,0,0,.5)";for(let i=0;i<120;i++)x.fillRect(Math.random()*320,Math.random()*180,2,2);
+  x.strokeStyle="rgba(120,255,160,.5)";x.strokeRect(6,6,308,168);x.fillStyle="rgba(120,255,160,.9)";x.font="11px ui-monospace,Menlo,monospace";x.fillText("ZOOM ×"+M.zm+"  "+Math.round(o.range)+" m",12,20);
+  const q=c<.3?"Image POOR: zoom in or wait for it to close.":c<.6?"Image FAIR: shape visible, markings unclear.":"Image GOOD: shape and markings resolved.";
+  if(q!==zqLast){zqLast=q;const e=$("zq");if(e)e.textContent=q}
+}
+const COL={hostile:"#ff4646",friendly:"#5aa0ff",bird:"#52d68a",aircraft:"#52d68a"};
+function brk(x,y,b,c,w){sx.strokeStyle=c;sx.lineWidth=w;const k=b*.45;sx.beginPath();for(const [u,v] of [[-1,-1],[1,-1],[-1,1],[1,1]]){sx.moveTo(x+u*b,y+v*(b-k));sx.lineTo(x+u*b,y+v*b);sx.lineTo(x+u*(b-k),y+v*b)}sx.stroke()}
+function simLoop(t){
+  requestAnimationFrame(simLoop);
+  const dt=Math.min(.05,(t-simT)/1000);simT=t;
+  if($("t-train").classList.contains("hidden"))return;
+  const L=LV[M?M.lv:1],night=L.night,g=sx.createLinearGradient(0,0,0,450);sx.setTransform(2,0,0,2,0,0);
+  g.addColorStop(0,night?"#10141a":"#7d858f");g.addColorStop(1,night?"#1c222b":"#aab1b9");sx.fillStyle=g;sx.fillRect(0,0,800,450);
+  sx.fillStyle=night?"#06080b":"#1d2228";sx.beginPath();sx.moveTo(0,450);for(let x=0;x<=800;x+=20)sx.lineTo(x,405-Math.abs(Math.sin(x*.03)*12)-Math.abs(Math.sin(x*.11)*5));sx.lineTo(800,450);sx.fill();
+  if(M&&!M.end)step(dt);
+  if(M)for(const o of M.obj){
+    if(o.done)continue;const y=o.sy||o.y,r=Math.max(2,Math.min(14,2800/Math.max(o.range,200)));
+    const gr=sx.createRadialGradient(o.x,y,0,o.x,y,r*1.8);gr.addColorStop(0,night?"rgba(255,255,255,.95)":"rgba(15,18,22,.95)");gr.addColorStop(1,"rgba(0,0,0,0)");sx.fillStyle=gr;sx.beginPath();sx.arc(o.x,y,r*1.8,0,7);sx.fill();
+    const c=o.cls?COL[o.cls]:"#ffbe00",b=r+13;brk(o.x,y,b,c,o===sel?2.4:1.2);
+    if(o.cls==="hostile"){sx.beginPath();sx.moveTo(o.x,y-b-5);sx.lineTo(o.x+5,y-b);sx.lineTo(o.x,y-b+5);sx.lineTo(o.x-5,y-b);sx.closePath();sx.stroke()}
+    sx.fillStyle=c;sx.font="10px ui-monospace,Menlo,monospace";sx.fillText("T"+String(o.id).padStart(2,"0")+" "+(o.cls?TYPES[o.cls].toUpperCase():"UNKNOWN"),o.x+b+4,y-2);sx.fillText(Math.round(o.range)+" m",o.x+b+4,y+10);
+    if(o===sel){const p=b+6+Math.sin(t/140)*2;brk(o.x,y,p,"#fff",1)}
+  }
+  if(L.nz){sx.fillStyle="rgba(200,205,215,"+L.nz*.25+")";sx.fillRect(0,0,800,450)}
+  for(let i=0;i<110;i++){sx.fillStyle="rgba("+(Math.random()<.5?"255,255,255":"0,0,0")+",.07)";sx.fillRect(Math.random()*800,Math.random()*450,2,2)}
+  const vg=sx.createRadialGradient(400,225,180,400,225,470);vg.addColorStop(0,"rgba(0,0,0,0)");vg.addColorStop(1,"rgba(0,0,0,.55)");sx.fillStyle=vg;sx.fillRect(0,0,800,450);
+  // HUD
+  sx.strokeStyle="rgba(120,255,160,.55)";sx.fillStyle="rgba(120,255,160,.85)";sx.lineWidth=1;sx.font="11px ui-monospace,Menlo,monospace";
+  sx.beginPath();sx.moveTo(380,225);sx.lineTo(392,225);sx.moveTo(408,225);sx.lineTo(420,225);sx.moveTo(400,205);sx.lineTo(400,217);sx.moveTo(400,233);sx.lineTo(400,245);sx.stroke();
+  brk(400,225,150,"rgba(120,255,160,.35)",1);
+  sx.fillText((night?"IR WHITE-HOT":"EO DAY")+"  AZ 047  EL +05  "+new Date().toISOString().slice(11,19)+"Z",14,20);
+  sx.fillText("ZONE 500 m  |  SECTOR "+(M?"ACTIVE":"STANDBY"),14,436);
+  // radar
+  const cx=730,cy=118,R=72;sx.fillStyle="rgba(5,12,8,.7)";sx.beginPath();sx.arc(cx,cy,R,Math.PI,0);sx.closePath();sx.fill();
+  sx.strokeStyle="rgba(120,255,160,.4)";for(const k of [.33,.66,1]){sx.beginPath();sx.arc(cx,cy,R*k,Math.PI,0);sx.stroke()}
+  const sw=Math.sin(t/900)*Math.PI/2;sx.beginPath();sx.moveTo(cx,cy);sx.lineTo(cx+Math.sin(sw)*R,cy-Math.cos(sw)*R);sx.stroke();
+  if(M)for(const o of M.obj){if(o.done)continue;const th=(o.x/800-.5)*Math.PI,rr=Math.min(1,o.range/3000)*R;sx.fillStyle=o.cls?COL[o.cls]:"#ffbe00";sx.fillRect(cx+Math.sin(th)*rr-2,cy-Math.cos(th)*rr-2,4,4)}
+  if(!M)return;
+  $("hScore").textContent=M.score;$("hStreak").textContent=M.streak;$("hLeft").textContent=LV[M.lv].n-M.obj.filter(o=>o.done).length;
+  if(sel&&!sel.done)zdraw(sel,t);
+  if(sel&&!sel.done&&$("rd")&&Math.floor(t/300)!==M.rf){M.rf=Math.floor(t/300);$("rd").innerHTML=readout(sel)}
+}
+requestAnimationFrame(simLoop);
+</script>
+</body>
+</html>
